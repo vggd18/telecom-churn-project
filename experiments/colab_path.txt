@@ -1,0 +1,7 @@
+experiments/                       # Notebooks de experimentação (1 por integrante)
+ ├── 01_eda.ipynb                  # Análise exploratória
+ ├── 02_baseline.ipynb             # Baselines rápidos (MLP + XGBoost)
+ ├── 03_mlp_experiments.ipynb           # Jon
+ ├── 04_transformers_experiments.ipynb  # Vitor
+ ├── 05_boosting_kan_experiments.ipynb  # Dodo
+ └── 06_final_comparison.ipynb

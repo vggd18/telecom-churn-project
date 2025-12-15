@@ -1,0 +1,11 @@
+metadata = {
+    'train_shape': X_train.shape,
+    'val_shape': X_val.shape,
+    'test_shape': X_test.shape,
+    'train_class_distribution': {
+        'class_0': int(np.sum(y_train == 0)),
+        'class_1': int(np.sum(y_train == 1))
+    },
+    'feature_names': self.feature_names,
+    'random_state': self.random_state
+}

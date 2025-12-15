@@ -1,0 +1,14 @@
+results/                           # Resultados salvos
+ ├── experiments_log.csv           # Log de todos os experimentos
+ ├── metrics/                      # Métricas por modelo
+ │   ├── mlp_metrics.json
+ │   ├── xgboost_metrics.json
+ │   └── ...
+ ├── figures/                      # Gráficos (ROC, KS, confusion matrix)
+ │   ├── mlp_roc.png
+ │   ├── xgboost_ks_plot.png
+ │   └── ...
+ └── models/                       # Modelos treinados (checkpoints)
+     ├── best_mlp.keras
+     ├── best_xgboost.pkl
+     └── ...
