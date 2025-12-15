@@ -31,9 +31,9 @@ python scripts/prepare_data.py
 
 ### 3. Executar experimentos
 Abrir notebooks em `experiments/`:
-- `03_mlp_experiments.ipynb` (Integrante A)
-- `04_transformers_experiments.ipynb` (Integrante B)
-- `05_boosting_kan_experiments.ipynb` (Integrante C)
+- `mlp_experiments.ipynb` (Jonathas Vinicius)
+- `transformers_experiments.ipynb` (Douglas Gemir)
+- `boosting_kan_experiments.ipynb` (Vitor Dias)
 
 ### 4. Consolidar resultados
 ```bash
@@ -48,8 +48,8 @@ jupyter notebook experiments/06_final_comparison.ipynb
 
 ## 👥 Equipe
 - Jonathas Vinicius: MLP
-- Vítor Dias: Transformers tabulares
-- Douglas Gemir: Boosting & KAN
+- Douglas Gemir: Transformers tabulares
+- Vítor Dias: Boosting & KAN
 
 ## 📝 Estrutura do Projeto
 ```
