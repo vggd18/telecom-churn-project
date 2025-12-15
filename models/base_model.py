@@ -2,7 +2,6 @@
 Classe abstrata para padronizar interface.
 """
 from abc import ABC, abstractmethod
-import json
 
 class BaseModel(ABC):
     """
@@ -16,8 +15,11 @@ class BaseModel(ABC):
         self.history = {}
         
     @abstractmethod
-    def build(self, input_dim, **kwargs):
-        """Constrói a arquitetura do modelo."""
+    def build(self, input_dim=None, **kwargs):
+        """
+        Constrói a arquitetura do modelo.
+        input_dim é opcional pois árvores (XGB/GB) inferem isso no fit.
+        """
         pass
     
     @abstractmethod
