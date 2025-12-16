@@ -4,7 +4,6 @@ import torch.optim as optim
 
 from base_model import BaseModel
 
-
 class STabModel(BaseModel, nn.Module):
     def __init__(
         self,
@@ -50,7 +49,6 @@ class STabModel(BaseModel, nn.Module):
         self.history = {
             "train_loss": [],
             "val_loss": []
-/*******  30c4cf97-e322-4b4a-8d07-7f20d1ccd841  *******/
         }
 
         self.model = self
