@@ -11,7 +11,7 @@ sys.path.insert(0, '.')
 import numpy as np
 from models.gradient_boosting import GradientBoostingModel, XGBoostModel
 from models.kan import KANModel
-from src.utils import get_timestamped_path
+from src.utils import get_timestamped_path, ensure_directories
 import json
 
 
@@ -110,6 +110,8 @@ def main():
     final_output_path = get_timestamped_path(args.output)
     
     # Salvar
+    ensure_directories()
+    final_output_path = get_timestamped_path(args.output, subfolder='models')
     model.save(final_output_path)
     print(f"\n✅ Modelo salvo em: {final_output_path}")
 
