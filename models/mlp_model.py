@@ -2,7 +2,7 @@ import joblib
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import log_loss, mean_squared_error
 
-from base_model import BaseModel
+from .base_model import BaseModel
 
 
 class MLPModel(BaseModel):
