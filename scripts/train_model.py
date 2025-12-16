@@ -11,6 +11,7 @@ sys.path.insert(0, '.')
 import numpy as np
 from models.gradient_boosting import GradientBoostingModel, XGBoostModel
 from models.kan import KANModel
+from src.utils import get_timestamped_path
 import json
 
 
@@ -105,9 +106,12 @@ def main():
     # Treinar
     model = train_model(args.model, config)
     
+    # Adicionar timestamp
+    final_output_path = get_timestamped_path(args.output)
+    
     # Salvar
-    model.save(args.output)
-    print(f"\n✅ Modelo salvo em: {args.output}")
+    model.save(final_output_path)
+    print(f"\n✅ Modelo salvo em: {final_output_path}")
 
 
 if __name__ == '__main__':

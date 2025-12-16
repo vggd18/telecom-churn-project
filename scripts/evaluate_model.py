@@ -2,17 +2,20 @@
 Script CLI para avaliar modelo salvo.
 
 Uso:
-    python scripts/evaluate_model.py --model results/xgb_baseline.pkl --type xgboost
+    python scripts/evaluate_model.py --model results/xgb_baseline.pkl --type xgboost --output results/metrics_xgb.json
 """
 import argparse
 import sys
+import os
 sys.path.insert(0, '.')
 
 import numpy as np
 import json
+from src.utils import get_timestamped_path
 from models.gradient_boosting import GradientBoostingModel, XGBoostModel
 from models.kan import KANModel
 from src.metrics import calculate_all_metrics
+from src.visualization import plot_ks_statistic, plot_roc_curve, plot_confusion_matrix
 
 
 def load_data(data_dir='data/processed'):
@@ -48,7 +51,7 @@ def evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test):
     metrics_val = calculate_all_metrics(y_val, y_val_pred)
     metrics_test = calculate_all_metrics(y_test, y_test_pred)
     
-    # Imprimir
+    # Imprimir Tabela
     print(f"\n{'Dataset':<10} {'KS':<8} {'AUROC':<8} {'Precision':<10} {'Recall':<8} {'F1':<8}")
     print("-"*65)
     print(f"{'Train':<10} {metrics_train['ks']:<8.4f} {metrics_train['auroc']:<8.4f} "
@@ -80,7 +83,7 @@ def main():
                        choices=['gb', 'xgboost', 'kan'],
                        help='Tipo de modelo')
     parser.add_argument('--output', type=str, default=None,
-                       help='Salvar métricas em JSON')
+                       help='Salvar métricas em JSON e gráficos')
     
     args = parser.parse_args()
     
@@ -103,9 +106,36 @@ def main():
     
     # Salvar se especificado
     if args.output:
-        with open(args.output, 'w') as f:
+        final_output_path = get_timestamped_path(args.output)
+        
+        with open(final_output_path, 'w') as f:
             json.dump(metrics, f, indent=2)
-        print(f"\n✅ Métricas salvas em: {args.output}")
+        print(f"\n✅ Métricas salvas em: {final_output_path}")
+        print("📊 Gerando gráficos...")
+        
+        y_test_pred = model.predict_proba(X_test)
+        base_path = final_output_path.replace('.json', '')
+        ks_path = f"{base_path}_ks.png"
+        roc_path = f"{base_path}_roc.png"
+        cm_path = f"{base_path}_cm.png"
+        
+        # Plotar KS
+        plot_ks_statistic(y_test, y_test_pred, output_path=ks_path, 
+                         title=f"KS Plot - {model.name}")
+        
+        # Plotar ROC
+        plot_roc_curve(y_test, y_test_pred, output_path=roc_path,
+                      title=f"ROC Curve - {model.name}")
+        
+        # Plotar Matriz de Confusão
+        y_test_class = (y_test_pred >= 0.5).astype(int)
+        plot_confusion_matrix(y_test, y_test_class, output_path=cm_path,
+                             title=f"Confusion Matrix - {model.name}")
+        
+        print(f"📈 Gráficos salvos:")
+        print(f"   - {ks_path}")
+        print(f"   - {roc_path}")
+        print(f"   - {cm_path}")
 
 
 if __name__ == '__main__':
