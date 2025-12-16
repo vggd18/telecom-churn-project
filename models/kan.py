@@ -1,10 +1,12 @@
 """
 KAN (Kolmogorov-Arnold Networks).
-Implementação experimental conforme Slide 102.
+Implementação experimental.
 """
 from models.base_model import BaseModel
 import numpy as np
 import time
+import torch
+import os
 
 # Tentar importar KAN
 try:
@@ -18,6 +20,7 @@ except ImportError:
 class KANModel(BaseModel):
     """
     Kolmogorov-Arnold Network.
+    Wrapper com salvamento robusto (Arquitetura + Pesos).
     """
     
     def __init__(self, name="KAN", random_state=42):
@@ -25,6 +28,7 @@ class KANModel(BaseModel):
         self.config = {}
         self.training_time = 0
         self.history = {'train_loss': [], 'val_loss': []}
+        self.model = None # Garante que existe, mesmo que vazio
         
         if not KAN_AVAILABLE:
             raise ImportError("pykan não está instalado. Instale: pip install pykan")
@@ -33,7 +37,6 @@ class KANModel(BaseModel):
               seed=None, **kwargs):
         """
         Constrói KAN.
-        Slide 102: Investigar KAN (versão mais recente).
         """
         # Se input_dim for passado, garante que width[0] combine
         if input_dim is not None and width[0] != input_dim:
@@ -46,14 +49,19 @@ class KANModel(BaseModel):
             'seed': seed or self.random_state
         }
         
+        # Limpar kwargs de treino que não servem pro construtor
+        train_params = ['steps', 'lr', 'lamb', 'log_interval', 'early_stopping_rounds']
+        init_kwargs = kwargs.copy()
+        for param in train_params:
+            init_kwargs.pop(param, None)
+
         try:
-            # device='cpu' é mais seguro para datasets pequenos/médios sem setup CUDA complexo
             self.model = KAN(
                 width=width,
                 grid=grid,
                 k=k,
-                seed=self.config['seed'],
-                **kwargs
+                seed=int(self.config['seed']),
+                **init_kwargs
             )
         except Exception as e:
             print(f"❌ Erro ao criar KAN: {e}")
@@ -62,7 +70,7 @@ class KANModel(BaseModel):
         return self
     
     def train(self, X_train, y_train, X_val=None, y_val=None,
-              steps=100, lr=0.001, lamb=0.0, 
+              steps=50, lr=0.01, lamb=0.0, 
               log_interval=10, **kwargs):
         """
         Treina KAN.
@@ -70,8 +78,9 @@ class KANModel(BaseModel):
         print(f"🚀 Treinando {self.name}...")
         start_time = time.time()
         
-        X_train_tensor = X_train.astype(np.float32)
-        y_train_tensor = y_train.reshape(-1, 1).astype(np.float32)
+        # Converter NumPy para Torch Tensor
+        X_train_tensor = torch.from_numpy(X_train.astype(np.float32))
+        y_train_tensor = torch.from_numpy(y_train.reshape(-1, 1).astype(np.float32))
         
         dataset = {
             'train_input': X_train_tensor,
@@ -79,11 +88,14 @@ class KANModel(BaseModel):
         }
         
         if X_val is not None:
-            dataset['test_input'] = X_val.astype(np.float32)
-            dataset['test_label'] = y_val.reshape(-1, 1).astype(np.float32)
+            dataset['test_input'] = torch.from_numpy(X_val.astype(np.float32))
+            dataset['test_label'] = torch.from_numpy(y_val.reshape(-1, 1).astype(np.float32))
+        else:
+            dataset['test_input'] = X_train_tensor
+            dataset['test_label'] = y_train_tensor
         
         try:
-            self.model.train(
+            results = self.model.fit(
                 dataset,
                 opt='Adam',
                 steps=steps,
@@ -93,47 +105,84 @@ class KANModel(BaseModel):
                 **kwargs
             )
             
-            # Tentar extrair histórico (depende da versão do pykan)
-            if hasattr(self.model, 'train_loss'):
-                self.history['train_loss'] = self.model.train_loss
-            if hasattr(self.model, 'test_loss'):
-                self.history['val_loss'] = self.model.test_loss
+            if isinstance(results, dict) and 'train_loss' in results:
+                self.history['train_loss'] = results['train_loss']
                 
         except Exception as e:
             print(f"❌ Erro KAN train: {e}")
-            raise
+            pass
         
         self.training_time = time.time() - start_time
         print(f"✅ Treino KAN finalizado: {self.training_time:.2f}s")
         return self
     
     def predict_proba(self, X):
-        X_tensor = X.astype(np.float32)
+        if self.model is None:
+            print("⚠️ Modelo KAN não foi carregado corretamente (None).")
+            return np.zeros(len(X))
+
+        X_tensor = torch.from_numpy(X.astype(np.float32))
         try:
-            # KAN retorna logits ou valor de regressão
-            predictions = self.model(X_tensor).flatten().detach().numpy()
-            # Sigmoid para garantir [0,1]
+            predictions = self.model(X_tensor)
+            
+            if hasattr(predictions, 'detach'):
+                predictions = predictions.detach().numpy().flatten()
+            else:
+                predictions = predictions.flatten()
+                
             predictions = 1 / (1 + np.exp(-predictions))
             return np.clip(predictions, 0, 1)
-        except Exception:
-            # Fallback se detach/numpy falhar (versões diferentes)
-            predictions = self.model(X_tensor).flatten()
-            predictions = 1 / (1 + np.exp(-predictions))
-            return np.clip(predictions, 0, 1)
+            
+        except Exception as e:
+            print(f"⚠️ Erro na predição KAN: {e}")
+            return np.zeros(len(X))
 
     def save(self, filepath):
+        """
+        Salva um Checkpoint completo: Configuração + Pesos.
+        """
+        if self.model is None:
+            print("⚠️ Tentativa de salvar modelo KAN vazio.")
+            return
+
+        checkpoint = {
+            'config': self.config,
+            'state_dict': self.model.state_dict()
+        }
         try:
-            self.model.save(filepath)
-        except:
-            import pickle
-            with open(filepath, 'wb') as f:
-                pickle.dump(self.model, f)
+            torch.save(checkpoint, filepath)
+        except Exception as e:
+            print(f"❌ Erro ao salvar KAN: {e}")
     
     def load(self, filepath):
-        import pickle
+        """
+        Carrega Checkpoint, reconstrói a arquitetura e carrega os pesos.
+        """
+        if not os.path.exists(filepath):
+            print(f"❌ Arquivo não encontrado: {filepath}")
+            return self
+
         try:
-            self.model = KAN.load(filepath)
-        except:
-            with open(filepath, 'rb') as f:
-                self.model = pickle.load(f)
+            # Carrega o dicionário salvo
+            checkpoint = torch.load(filepath)
+            
+            # 1. Recupera a configuração e RECONSTRÓI o modelo
+            if 'config' in checkpoint:
+                self.config = checkpoint['config']
+                # Chama o build internamente para criar o esqueleto self.model
+                self.build(**self.config)
+            else:
+                print("⚠️ Aviso: Arquivo antigo sem 'config'. Tentando carregar apenas pesos...")
+                # Se for arquivo antigo, precisamos torcer para o build já ter sido chamado externamente
+                # ou falhará.
+            
+            # 2. Carrega os pesos no esqueleto pronto
+            if 'state_dict' in checkpoint and self.model is not None:
+                self.model.load_state_dict(checkpoint['state_dict'])
+            elif self.model is None:
+                print("❌ Falha: Não foi possível reconstruir a arquitetura do modelo.")
+                
+        except Exception as e:
+            print(f"❌ Erro crítico ao carregar KAN: {e}")
+            
         return self

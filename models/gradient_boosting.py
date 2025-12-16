@@ -157,11 +157,7 @@ class XGBoostModel(BaseModel):
     def train(self, X_train, y_train, X_val=None, y_val=None, 
               early_stopping_rounds=20, verbose=False):
         """
-        Treina com early stopping.
-        
-        Args:
-            early_stopping_rounds: Paciência para early stopping (10-50)
-            verbose: Mostrar progresso (True/False)
+        Treina com early stopping (Compatível com XGBoost 2.0+).
         """
         print(f"🚀 Treinando {self.name}...")
         start_time = time.time()
@@ -169,21 +165,32 @@ class XGBoostModel(BaseModel):
         # Preparar eval_set
         eval_set = [(X_val, y_val)] if X_val is not None else None
         
+        # FIX PARA XGBOOST 2.0+:
+        # Early stopping agora é parâmetro do modelo, não do fit.
+        # Usamos set_params para injetar dinamicamente.
+        if eval_set and early_stopping_rounds:
+            self.model.set_params(early_stopping_rounds=early_stopping_rounds)
+        
+        # O fit fica limpo, sem callbacks explícitos
         self.model.fit(
             X_train, y_train,
             eval_set=eval_set,
-            early_stopping_rounds=early_stopping_rounds if eval_set else None,
             verbose=verbose
         )
         
         self.training_time = time.time() - start_time
-        self.best_iteration = self.model.best_iteration if eval_set else self.config['n_estimators']
         
+        # Recuperar melhor iteração (se early stopping foi usado)
+        if hasattr(self.model, 'best_iteration'):
+            self.best_iteration = self.model.best_iteration
+        else:
+            self.best_iteration = self.config['n_estimators']
+            
         print(f"✅ Treinamento concluído em {self.training_time:.2f}s")
         if eval_set:
             print(f"   Melhor iteração: {self.best_iteration}")
         
-        return self
+        return self 
     
     def predict_proba(self, X):
         """Retorna probabilidades da classe positiva."""
