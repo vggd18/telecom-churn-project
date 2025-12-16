@@ -1,0 +1,5 @@
+Timestamp,Model,KS_Test,AUROC_Test,Params
+2025-12-16 23:13:47,XGBoost (xgboost),0.5164,0.8324,"{'name': 'XGBoost', 'random_state': 42, 'training_time': 0, 'best_iteration': 0}"
+2025-12-16 23:16:01,GradientBoosting (gb),0.5155,0.8338,"{'name': 'GradientBoosting', 'random_state': 42, 'training_time': 0}"
+2025-12-16 23:16:09,XGBoost (xgboost),0.5164,0.8324,"{'name': 'XGBoost', 'random_state': 42, 'training_time': 0, 'best_iteration': 0}"
+2025-12-16 23:32:49,KAN (kan),0.4863,0.8120,"{'name': 'KAN', 'random_state': 42}"
