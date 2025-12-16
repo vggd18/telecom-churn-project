@@ -1,3 +1,10 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+from .base_model import BaseModel
+
+
 class STabModel(BaseModel, nn.Module):
     def __init__(
         self,
@@ -37,7 +44,6 @@ class STabModel(BaseModel, nn.Module):
             nn.Linear(d_model, 1)
         )
 
-        # Infra de treino
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.criterion = nn.BCEWithLogitsLoss()
 
@@ -46,7 +52,5 @@ class STabModel(BaseModel, nn.Module):
             "val_loss": []
         }
 
-        # padrão do BaseModel
         self.model = self
-
         self.to(self.device)
