@@ -3,63 +3,63 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-
 from .base_model import BaseModel
 
-
 class STabModel(BaseModel, nn.Module):
-    def __init__(
-        self,
-        input_dim,
-        d_model=64,              # dim
-        depth=2,                 # depth
-        n_heads=4,               # heads
-        ff_mult=4,               # U
-        attn_dropout=0.1,        # attn_dropout
-        ff_dropout=0.1,          # ff_dropout
-        lr=1e-3,                 # lr
-        weight_decay=0.0,        # weight_decay
-        pooling="mean",          # cases
-        name="STabTransformer",
-        random_state=42
-    ):
-        BaseModel.__init__(self, name=name, random_state=random_state)
+    def __init__(self, config=None):
+        BaseModel.__init__(self, name="STabTransformer", random_state=42)
         nn.Module.__init__(self)
 
-        self.input_dim = int(input_dim)
-        self.pooling = pooling
+        # Configuração de hiperparâmetros
+        self.config = config if config is not None else {
+            "d_model": 64,              # dim
+            "depth": 2,                 # depth
+            "n_heads": 4,               # heads
+            "ff_mult": 4,               # U
+            "attn_dropout": 0.1,        # attn_dropout
+            "ff_dropout": 0.1,          # ff_dropout
+            "lr": 1e-3,                 # lr
+            "weight_decay": 0.0,        # weight_decay
+            "pooling": "mean",          # pooling
+            "batch_size": 256,          # batch_size
+            "epochs": 20,               # epochs
+            "max_fail": 20              # Patience
+        }
+
+        self.input_dim = None
+        self.pooling = self.config["pooling"]
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Cada feature vira um token
-        self.feature_embed = nn.Linear(1, d_model)
+        # Inicialização das camadas
+        self.feature_embed = nn.Linear(1, self.config["d_model"])
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=n_heads,
-            dim_feedforward=d_model * ff_mult,
-            dropout=ff_dropout,
+            d_model=self.config["d_model"],
+            nhead=self.config["n_heads"],
+            dim_feedforward=self.config["d_model"] * self.config["ff_mult"],
+            dropout=self.config["ff_dropout"],
             activation="relu",
             batch_first=True
         )
 
         self.transformer = nn.TransformerEncoder(
             encoder_layer,
-            num_layers=depth
+            num_layers=self.config["depth"]
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(d_model, d_model),
+            nn.Linear(self.config["d_model"], self.config["d_model"]),
             nn.ReLU(),
-            nn.Dropout(ff_dropout),
-            nn.Linear(d_model, 1)
+            nn.Dropout(self.config["ff_dropout"]),
+            nn.Linear(self.config["d_model"], 1)
         )
 
         self.criterion = nn.BCEWithLogitsLoss()
         self.optimizer = optim.Adam(
             self.parameters(),
-            lr=lr,
-            weight_decay=weight_decay
+            lr=self.config["lr"],
+            weight_decay=self.config["weight_decay"]
         )
 
         self.history = {"train_loss": [], "val_loss": []}
@@ -92,8 +92,8 @@ class STabModel(BaseModel, nn.Module):
         return logits
 
     def train(self, X_train, y_train, X_val, y_val, **kwargs):
-        epochs = int(kwargs.get("epochs", 20))
-        batch_size = int(kwargs.get("batch_size", 256))
+        epochs = int(kwargs.get("epochs", self.config["epochs"]))
+        batch_size = int(kwargs.get("batch_size", self.config["batch_size"]))
 
         X_train_t = torch.tensor(np.asarray(X_train), dtype=torch.float32)
         y_train_t = torch.tensor(np.asarray(y_train), dtype=torch.float32)
@@ -107,7 +107,7 @@ class STabModel(BaseModel, nn.Module):
             shuffle=True
         )
 
-        for _ in range(epochs):
+        for epoch in range(epochs):
             nn.Module.train(self, True)
             total, n = 0.0, 0
 
