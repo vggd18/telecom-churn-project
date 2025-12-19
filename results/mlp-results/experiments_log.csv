@@ -1,0 +1,3 @@
+Timestamp,Model,KS_Test,AUROC_Test,Params
+2025-12-19 14:39:21,MLP_Optuna_Best,0.5049,0.8299,"{'activation': 'tanh', 'solver': 'sgd', 'learning_rate_init': 0.011242013781122662, 'alpha': 7.693558439970309e-05, 'hidden_layer_sizes': (30,)}"
+2025-12-19 14:40:40,MLP_GridSearch_Best,0.5154,0.8323,"{'hidden_layer_sizes': (50,), 'activation': 'tanh', 'solver': 'adam', 'learning_rate_init': 0.001, 'alpha': 0.001}"
