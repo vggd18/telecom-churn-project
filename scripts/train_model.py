@@ -27,7 +27,7 @@ def load_data(data_dir='data/processed'):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def train_model(model_type, config=None, data_dir='data/processed'):
+def train_model(model_type, config=None, data_dir='data/processed', lamb=0.0):
     """
     Treina modelo.
     
@@ -35,6 +35,7 @@ def train_model(model_type, config=None, data_dir='data/processed'):
         model_type: 'gb', 'xgboost', 'kan'
         config: Dict com hiperparâmetros (opcional)
         data_dir: Diretório dos dados processados
+        lamb: Fator de regularização (apenas KAN)
     
     Returns:
         model treinado
@@ -80,7 +81,14 @@ def train_model(model_type, config=None, data_dir='data/processed'):
     if model_type in ['gb', 'xgboost']:
         model.train(X_train, y_train, X_val, y_val)
     else:  # KAN
-        model.train(X_train, y_train, X_val, y_val, steps=100, lr=0.001)
+        # Ajuste: Usar parâmetros da config ou defaults, injetando lamb
+        lr = config.get('lr', 0.001)
+        steps = config.get('steps', 100)
+        # Se lamb for passado via CLI, usa ele. Se não, tenta pegar da config.
+        actual_lamb = lamb if lamb > 0 else config.get('lamb', 0.0)
+        
+        print(f"   ℹ️  Treinando KAN (lr={lr}, steps={steps}, lamb={actual_lamb})")
+        model.train(X_train, y_train, X_val, y_val, steps=steps, lr=lr, lamb=actual_lamb)
     
     return model
 
@@ -88,12 +96,14 @@ def train_model(model_type, config=None, data_dir='data/processed'):
 def main():
     parser = argparse.ArgumentParser(description='Treinar modelo')
     parser.add_argument('--model', type=str, required=True,
-                       choices=['gb', 'xgboost', 'kan'],
-                       help='Tipo de modelo')
+                        choices=['gb', 'xgboost', 'kan'],
+                        help='Tipo de modelo')
     parser.add_argument('--output', type=str, required=True,
-                       help='Caminho para salvar modelo')
+                        help='Caminho para salvar modelo')
     parser.add_argument('--config', type=str, default=None,
-                       help='JSON com hiperparâmetros')
+                        help='JSON com hiperparâmetros')
+    parser.add_argument('--lamb', type=float, default=0.0,
+                        help='Regularização (apenas KAN)')
     
     args = parser.parse_args()
     
@@ -104,7 +114,7 @@ def main():
             config = json.load(f)
     
     # Treinar
-    model = train_model(args.model, config)
+    model = train_model(args.model, config, lamb=args.lamb)
     
     # Adicionar timestamp
     final_output_path = get_timestamped_path(args.output)
