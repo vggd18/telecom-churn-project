@@ -7,6 +7,7 @@ import sys
 import os
 import json
 import numpy as np
+from sklearn.metrics import f1_score
 
 # Adicionar diretório raiz ao path
 sys.path.insert(0, '.')
@@ -14,7 +15,7 @@ sys.path.insert(0, '.')
 from src.utils import get_timestamped_path, ensure_directories, log_experiment
 from models.gradient_boosting import GradientBoostingModel, XGBoostModel
 from models.kan import KANModel
-from src.metrics import calculate_all_metrics
+from src.metrics import calculate_all_metrics, calculate_ks
 from src.visualization import plot_ks_statistic, plot_roc_curve, plot_confusion_matrix
 
 def load_data(data_dir='data/processed'):
@@ -26,12 +27,32 @@ def load_data(data_dir='data/processed'):
         y_val = np.load(f'{data_dir}/y_val.npy')
         X_test = np.load(f'{data_dir}/X_test.npy')
         y_test = np.load(f'{data_dir}/y_test.npy')
-        return X_train, y_train, X_val, y_val, X_test, y_test
+        
+        # Tenta carregar validação desbalanceada para calibração de threshold
+        try:
+            X_val_calib = np.load(f'{data_dir}/X_val_imb.npy')
+            y_val_calib = np.load(f'{data_dir}/y_val_imb.npy')
+        except FileNotFoundError:
+            X_val_calib, y_val_calib = X_val, y_val
+
+        return X_train, y_train, X_val, y_val, X_test, y_test, X_val_calib, y_val_calib
     except FileNotFoundError as e:
         print(f"❌ Erro ao carregar dados: {e}")
         sys.exit(1)
 
-def evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test):
+def optimize_threshold(y_true, y_proba):
+    """Encontra threshold que maximiza F1."""
+    best_f1 = -1
+    best_thresh = 0.5
+    for thresh in np.arange(0.1, 0.95, 0.01):
+        y_pred = (y_proba >= thresh).astype(int)
+        score = f1_score(y_true, y_pred)
+        if score > best_f1:
+            best_f1 = score
+            best_thresh = thresh
+    return best_thresh
+
+def evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test, threshold=0.5):
     print("\n" + "="*60)
     print(f"📊 AVALIAÇÃO: {model.name}")
     print("="*60)
@@ -40,9 +61,10 @@ def evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test):
     y_val_pred = model.predict_proba(X_val)
     y_test_pred = model.predict_proba(X_test)
     
-    metrics_train = calculate_all_metrics(y_train, y_train_pred)
-    metrics_val = calculate_all_metrics(y_val, y_val_pred)
-    metrics_test = calculate_all_metrics(y_test, y_test_pred)
+    # Passando o threshold otimizado
+    metrics_train = calculate_all_metrics(y_train, y_train_pred, threshold=threshold)
+    metrics_val = calculate_all_metrics(y_val, y_val_pred, threshold=threshold)
+    metrics_test = calculate_all_metrics(y_test, y_test_pred, threshold=threshold)
     
     print(f"\n{'Dataset':<10} {'KS':<8} {'AUROC':<8} {'Precision':<10} {'Recall':<8} {'F1':<8}")
     print("-"*65)
@@ -60,7 +82,7 @@ def main():
     
     args = parser.parse_args()
     
-    X_train, y_train, X_val, y_val, X_test, y_test = load_data()
+    X_train, y_train, X_val, y_val, X_test, y_test, X_val_calib, y_val_calib = load_data()
     
     if args.type == 'gb': model = GradientBoostingModel()
     elif args.type == 'xgboost': model = XGBoostModel()
@@ -69,7 +91,17 @@ def main():
     model.load(args.model)
     print(f"✅ Modelo carregado: {args.model}")
     
-    metrics = evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test)
+    # Calcular melhor threshold na validação (ou usar KS como alternativa)
+    y_val_calib_proba = model.predict_proba(X_val_calib)
+    
+    # Se quiser usar KS para definir o threshold (conforme slides):
+    # ks_stat, best_thresh, _ = calculate_ks(y_val_calib, y_val_calib_proba)
+    # Ou usar F1 max:
+    best_thresh = optimize_threshold(y_val_calib, y_val_calib_proba)
+    
+    print(f"🔍 Threshold Otimizado: {best_thresh:.4f}")
+
+    metrics = evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test, threshold=best_thresh)
     
     if args.output:
         print("\n💾 Salvando resultados...")
@@ -92,8 +124,11 @@ def main():
         plot_ks_statistic(y_test, y_test_pred, output_path=os.path.join('results', 'figures', f"{base_filename}_ks.png"))
         plot_roc_curve(y_test, y_test_pred, output_path=os.path.join('results', 'figures', f"{base_filename}_roc.png"))
         
-        y_test_class = (y_test_pred >= 0.5).astype(int)
-        plot_confusion_matrix(y_test, y_test_class, output_path=os.path.join('results', 'figures', f"{base_filename}_cm.png"))
+        # Usar threshold otimizado para a matriz de confusão
+        y_test_class = (y_test_pred >= best_thresh).astype(int)
+        plot_confusion_matrix(y_test, y_test_class, 
+                              title=f"Confusion Matrix (Thresh={best_thresh:.2f})",
+                              output_path=os.path.join('results', 'figures', f"{base_filename}_cm.png"))
         
         print(f"   ✅ Gráficos salvos em results/figures/")
 
