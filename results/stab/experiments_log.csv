@@ -1,0 +1,4 @@
+Timestamp,Model,KS_Test,AUROC_Test,Params
+2026-01-10 19:03:49,STab_Standard,0.3523,0.7223,"{'d_model': 64, 'depth': 4, 'n_heads': 4, 'ff_mult': 4, 'ff_dropout': 0.2, 'lr': 0.0003, 'batch_size': 256, 'epochs': 40, 'max_fail': 10, 'pooling': 'mean', 'verbose': True, 'log_every': 10, 'debug_shapes': True, 'debug_grads': False}"
+2026-01-10 19:32:18,STab_Standard,0.3523,0.7223,"{'d_model': 64, 'depth': 4, 'n_heads': 4, 'ff_mult': 4, 'ff_dropout': 0.2, 'lr': 0.0003, 'batch_size': 256, 'epochs': 40, 'max_fail': 10, 'pooling': 'mean', 'verbose': True, 'log_every': 10, 'debug_shapes': True, 'debug_grads': False}"
+2026-01-10 19:37:32,STab_Standard,0.3523,0.7223,"{'d_model': 64, 'depth': 4, 'n_heads': 4, 'ff_mult': 4, 'ff_dropout': 0.2, 'lr': 0.0003, 'batch_size': 256, 'epochs': 40, 'max_fail': 10, 'pooling': 'mean', 'verbose': True, 'log_every': 10, 'debug_shapes': True, 'debug_grads': False}"
