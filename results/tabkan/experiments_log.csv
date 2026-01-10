@@ -1,0 +1,2 @@
+Timestamp,Model,KS_Test,AUROC_Test,Params
+2026-01-10 20:47:30,TabKAN_Standard,0.5127,0.8342,"{'depth': 2, 'hidden_dim': 32, 'grid_size': 12, 'activation': 'relu', 'dropout': 0.1, 'lr': 0.001, 'weight_decay': 0.0, 'batch_size': 256, 'epochs': 30, 'max_fail': 8, 'verbose': True}"
